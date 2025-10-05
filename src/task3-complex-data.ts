@@ -153,7 +153,7 @@ function getCourseStats(course: Course, students: Array<Student>) {
         : 0;
     
     const studentsWithGrades = enrolledStudents.filter(student => 
-        student.grades[course.id] && student.grades[course.id].length > 0
+        student.grades[course.id] && (student.grades[course.id] as Grade[]).length > 0
     ).length;
     
     const completionRate = enrolledStudents.length > 0 

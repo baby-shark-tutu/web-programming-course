@@ -11,6 +11,11 @@
 
 // Система управления формой с валидацией
 
+// TODO: Создать интерфейсы:
+// - FormField: name, element, validators[], errorElement?
+// - ValidationRule: validate: (value: string) => boolean, message: string
+// - FormData: [fieldName: string]: string
+
 // Создаем интерфейсы для типизации
 interface ValidationRule {
     validate: (value: string) => boolean;
