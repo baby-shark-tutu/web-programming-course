@@ -1,7 +1,5 @@
 // import Task4 from './tasks/Task4';
 
-// import { getApiAuthGithubCallback } from '../generated/api/auth/auth';
-
 import { userAuth } from './userAuth';
 
 function App() {
@@ -12,14 +10,29 @@ function App() {
   }
 
   if (!token) {
-    return <button onClick={login}>{'login'}</button>
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <button
+          onClick={login}
+          className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg shadow-md transition-colors"
+        >
+          Login
+        </button>
+      </div>
+    )
   }
 
-return <>
-    <h1>quiz</h1>
-    {/* <Task4 /> */}
-    <button onClick={logout}>{'razlogin'}</button>
-  </>
+  return (
+    <>
+      <button
+        onClick={logout}
+        className="fixed top-5 right-5 bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md transition-colors"
+      >
+        Logout
+      </button>
+      <h1>QWIZ GAME from lr4/src/Task4.tsx</h1> {/* <Task4 /> */}
+    </>
+  )
 }
 
 export default App;
