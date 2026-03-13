@@ -22,6 +22,7 @@ const MOCK_USERS: Record<string, { id: string; email: string; name: string }> = 
 // POST /api/auth/github/callback
 auth.post('/github/callback', async (c) => {
   try {
+    // Получение и валидация тела запроса
     const body = await c.req.json()
     console.log('📦 Request body:', body)
     
@@ -87,7 +88,7 @@ auth.post('/github/callback', async (c) => {
     const secret = process.env.JWT_SECRET || 'dev-secret-key'
     const token = await sign(payload, secret)
 
-    // Возвращаем ответ
+    // Возвращаем ответ клиенту
     return c.json({
       success: true,
       token,
@@ -109,8 +110,11 @@ auth.post('/github/callback', async (c) => {
   }
 })
 
+
+// Эндпоинт GET /api/auth/me
 auth.get('/me', async (c) => {
   try {
+    // Проверка заголовка Authorization
     const authHeader = c.req.header('Authorization')
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -124,8 +128,10 @@ auth.get('/me', async (c) => {
     const token = authHeader.split(' ')[1]
 
     const secret = process.env.JWT_SECRET || 'dev-secret-key'
+    // Проверка токена
     const payload = await verify(token, secret, 'HS256')
 
+    // Поиск пользователя в БД
     const user = await prisma.user.findUnique({
       where: { id: payload.sub as string }
     })
@@ -137,6 +143,7 @@ auth.get('/me', async (c) => {
       }, 404)
     }
 
+    // Ответ
     return c.json({
       success: true,
       user: {
@@ -147,6 +154,7 @@ auth.get('/me', async (c) => {
       }
     })
 
+    // Обработка ошибок проверки токена
   } catch (error) {
     return c.json({ 
       success: false,
