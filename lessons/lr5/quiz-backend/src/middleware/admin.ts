@@ -1,6 +1,7 @@
 import { verify } from 'hono/jwt';
 import { prisma } from '../lib/prisma.js';
 
+// проверяет, что текущий пользователь аутентифицирован и имеет роль admin
 export async function adminMiddleware(c: any, next: any) {
   const authHeader = c.req.header('Authorization');
   const jwtSecret = process.env.JWT_SECRET;
@@ -8,6 +9,7 @@ export async function adminMiddleware(c: any, next: any) {
     return c.json({ error: 'JWT_SECRET not configured' }, 500);
   }
 
+  // проверка, что заголовок начинается с Bearer
   if (!authHeader?.startsWith('Bearer ')) {
     return c.json({ error: 'Unauthorized' }, 401);
   }

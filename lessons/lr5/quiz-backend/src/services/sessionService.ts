@@ -29,6 +29,7 @@ export class SessionService {
         where: { id: sessionId },
       });
 
+      //	Проверяет, что сессия существует, активна и не истекла
       if (!session) {
         throw new SessionServiceError("Session not found", 404);
       }
@@ -45,6 +46,7 @@ export class SessionService {
         throw new SessionServiceError("Session expired", 409);
       }
 
+      // Проверяет, что вопрос существует
       const question = await tx.question.findUnique({
         where: { id: questionId },
       });
@@ -77,6 +79,7 @@ export class SessionService {
           Array.from(studentSet).every((answer) => correctSet.has(answer));
       }
 
+      // Создаём запись Answer в транзакции
       try {
         return await tx.answer.create({
           data: {
@@ -99,8 +102,71 @@ export class SessionService {
     });
   }
 
+  async createSession(
+    userId: string,
+    options?: { categoryId?: string; limit?: number; mode?: string }
+  ): Promise<{
+    sessionId: string;
+    userId: string;
+    status: string;
+    mode: string;
+    questions: { id: string; text: string; type: string }[];
+    totalQuestions: number;
+    answeredCount: number;
+    createdAt: Date;
+  }> {
+    return prisma.$transaction(async (tx) => {
+      // Создаём сессию со сроком действия 1 час
+      const session = await tx.session.create({
+        data: {
+          userId,
+          expiresAt: new Date(Date.now() + 60 * 60 * 1000), // +1 час
+          status: 'in_progress',
+        },
+      });
+  
+      // Формируем условия для выборки вопросов
+      const where: any = {};
+      if (options?.categoryId) {
+        where.categoryId = options.categoryId;
+      }
+  
+      // Получаем все вопросы (или отфильтрованные по категории)
+      const allQuestions = await tx.question.findMany({
+        where,
+        select: {
+          id: true,
+          text: true,
+          type: true
+        },
+      });
+  
+      // Если указан limit, выбираем случайные вопросы в нужном количестве
+      let selectedQuestions = allQuestions;
+      if (options?.limit && options.limit > 0) {
+        // Перемешиваем массив и берём первые limit элементов
+        selectedQuestions = allQuestions
+          .sort(() => 0.5 - Math.random())
+          .slice(0, options.limit);
+      }
+  
+      // Возвращаем объект, соответствующий SessionResponse
+      return {
+        sessionId: session.id,
+        userId: session.userId,
+        status: session.status,
+        mode: options?.mode || 'standard',
+        questions: selectedQuestions,
+        totalQuestions: selectedQuestions.length,
+        answeredCount: 0,
+        createdAt: session.createdAt,
+      };
+    });
+  }
+
   async submitSession(sessionId: string) {
     return prisma.$transaction(async (tx) => {
+      // Проверяет, что сессия существует, активна и не истекла
       const session = await tx.session.findUnique({
         where: { id: sessionId },
         include: {
@@ -124,10 +190,12 @@ export class SessionService {
         throw new SessionServiceError("Session expired", 409);
       }
 
+      // Суммирует баллы всех ответов
       const totalScore = session.answers
         .filter((answer) => answer.score !== null)
         .reduce((sum, answer) => sum + (answer.score ?? 0), 0);
 
+      //	Обновляет статус сессии на completed, устанавливает score и completedAt
       return tx.session.update({
         where: { id: sessionId },
         data: {

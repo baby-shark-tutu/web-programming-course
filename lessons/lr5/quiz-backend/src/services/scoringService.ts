@@ -2,7 +2,7 @@
 export class ScoringService {
     /**
      * Подсчёт баллов за вопрос с множественным выбором (multiple select)
-     * @param correctAnswers - массив правильных ответов (например, индексы)
+     * @param correctAnswers - массив правильных ответов (индексы)
      * @param studentAnswers - массив ответов студента
      * @returns итоговый балл (не меньше 0)
      */

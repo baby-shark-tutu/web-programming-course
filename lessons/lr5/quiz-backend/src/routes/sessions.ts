@@ -1,14 +1,14 @@
 import { Hono } from "hono";
 import { verify } from "hono/jwt";
 import { z } from "zod";
-import { prisma } from "../lib/prisma.js";                // исправлен импорт
+import { prisma } from "../lib/prisma.js";
 import { SessionServiceError, sessionService } from "../services/sessionService.js";
 import { AnswerSchema, SessionIdParamSchema } from "../utils/validation.js";
 
 export const sessions = new Hono();
 
 type JwtPayload = {
-  sub: string;  // В вашем JWT из auth.ts лежит sub, а не userId
+  sub: string;
 };
 
 class AuthError extends Error {
@@ -43,7 +43,6 @@ async function verifyToken(authorization: string | undefined): Promise<JwtPayloa
     throw new AuthError("Invalid token", 401);
   }
 
-  // Проверяем наличие sub (userId)
   const userId = typeof payload.sub === "string" ? payload.sub : undefined;
   if (!userId) {
     throw new AuthError("Invalid token", 401);
@@ -52,54 +51,46 @@ async function verifyToken(authorization: string | undefined): Promise<JwtPayloa
   return { sub: userId };
 }
 
-sessions.post("/", async (c) => {
+// POST /api/sessions – создание новой сессии
+sessions.post('/', async (c) => {
   try {
-    const authorization = c.req.header("Authorization");
+    const authorization = c.req.header('Authorization');
     const { sub: userId } = await verifyToken(authorization);
 
-    const questionCount = await prisma.question.count();
-
-    const session = await prisma.session.create({
-      data: {
-        userId,
-        expiresAt: new Date(Date.now() + 60 * 60 * 1000), // +1 час
-      },
-      select: {
-        id: true,
-        userId: true,
-        status: true,
-        startedAt: true,
-        expiresAt: true,
-        completedAt: true,
-        score: true,
-      },
-    });
-
-    return c.json({
-      session,
-      questionCount,
-    }, 201);
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return c.json({ error: error.flatten() }, 400);
+    // Пытаемся прочитать тело, но допускаем его отсутствие
+    let body: any = {};
+    try {
+      body = await c.req.json();
+    } catch {
+      // тело пустое или не JSON – оставляем пустой объект
     }
+
+    const { mode = 'standard', categoryId, limit } = body;
+
+    // Вызываем сервис для создания сессии
+    const sessionData = await sessionService.createSession(userId, { mode, categoryId, limit });
+
+    return c.json(sessionData, 201);
+  } catch (error) {
     if (error instanceof AuthError) {
       return c.json({ error: error.message }, error.statusCode);
     }
-    if (error instanceof Error && error.message === "JWT_SECRET is not configured") {
-      return c.json({ error: error.message }, 500);
+    if (error instanceof SessionServiceError) {
+      return c.json({ error: error.message }, error.statusCode);
     }
-    return c.json({ error: "Internal Server Error" }, 500);
+    console.error('Error creating session:', error);
+    return c.json({ error: 'Internal Server Error' }, 500);
   }
 });
 
+// POST /api/sessions/:id/answers – отправка ответа на вопрос
 sessions.post("/:id/answers", async (c) => {
   try {
     const authorization = c.req.header("Authorization");
     const { sub: userId } = await verifyToken(authorization);
-
     const { id } = SessionIdParamSchema.parse(c.req.param());
 
+    // Проверяем принадлежность сессии и её существование
     const session = await prisma.session.findUnique({
       where: { id },
       select: { id: true, userId: true },
@@ -115,11 +106,10 @@ sessions.post("/:id/answers", async (c) => {
     const body = await c.req.json();
     const data = AnswerSchema.parse({
       ...body,
-      sessionId: id,  // добавляем sessionId для валидации
+      sessionId: id, // добавляем sessionId для валидации (если нужно)
     });
 
     const answer = await sessionService.submitAnswer(id, data.questionId, data.userAnswer);
-
     return c.json({ answer }, 201);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -131,18 +121,16 @@ sessions.post("/:id/answers", async (c) => {
     if (error instanceof SessionServiceError) {
       return c.json({ error: error.message }, error.statusCode);
     }
-    if (error instanceof Error && error.message === "JWT_SECRET is not configured") {
-      return c.json({ error: error.message }, 500);
-    }
+    console.error('Error submitting answer:', error);
     return c.json({ error: "Internal Server Error" }, 500);
   }
 });
 
+// GET /api/sessions/:id – получение данных сессии со всеми ответами
 sessions.get("/:id", async (c) => {
   try {
     const authorization = c.req.header("Authorization");
     const { sub: userId } = await verifyToken(authorization);
-
     const { id } = SessionIdParamSchema.parse(c.req.param());
 
     const session = await prisma.session.findUnique({
@@ -171,18 +159,16 @@ sessions.get("/:id", async (c) => {
     if (error instanceof AuthError) {
       return c.json({ error: error.message }, error.statusCode);
     }
-    if (error instanceof Error && error.message === "JWT_SECRET is not configured") {
-      return c.json({ error: error.message }, 500);
-    }
+    console.error('Error fetching session:', error);
     return c.json({ error: "Internal Server Error" }, 500);
   }
 });
 
+// POST /api/sessions/:id/submit – завершение сессии и подсчёт итогового балла
 sessions.post("/:id/submit", async (c) => {
   try {
     const authorization = c.req.header("Authorization");
     const { sub: userId } = await verifyToken(authorization);
-
     const { id } = SessionIdParamSchema.parse(c.req.param());
 
     const session = await prisma.session.findUnique({
@@ -209,9 +195,7 @@ sessions.post("/:id/submit", async (c) => {
     if (error instanceof SessionServiceError) {
       return c.json({ error: error.message }, error.statusCode);
     }
-    if (error instanceof Error && error.message === "JWT_SECRET is not configured") {
-      return c.json({ error: error.message }, 500);
-    }
+    console.error('Error submitting session:', error);
     return c.json({ error: "Internal Server Error" }, 500);
   }
 });

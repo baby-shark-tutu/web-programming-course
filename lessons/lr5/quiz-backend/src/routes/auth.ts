@@ -27,7 +27,7 @@ auth.post('/github/callback', async (c) => {
 
     // Получаем пользователя из GitHub
     const githubUser = await getGitHubUserByCode(code)
-    console.log('👤 GitHub user:', githubUser)
+    console.log('GitHub user:', githubUser)
 
     // Подготавливаем данные для БД
     const userData = {
@@ -46,7 +46,7 @@ auth.post('/github/callback', async (c) => {
       create: userData,
     })
 
-    console.log('✅ User saved:', user)
+    console.log('User saved:', user)
 
     // Создаем JWT токен
     const payload = {
