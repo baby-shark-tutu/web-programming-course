@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { sign, verify } from 'hono/jwt'
 import { githubCallbackSchema } from '../utils/validation.js'
 import { prisma } from '../lib/prisma.js'
-import { getGitHubUserByCode } from '../services/github.js' // импортируем функцию
+import { getGitHubUserByCode } from '../services/github.js'
 
 const auth = new Hono()
 

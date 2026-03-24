@@ -90,14 +90,29 @@ export type GitHubUser = {
   }
   
   export async function getGitHubUserByCode(code: string): Promise<GitHubUser> {
-    if (code.startsWith("test_")) {
+    // Все тестовые коды начинаются с "test_"
+    console.log('🔍 getGitHubUserByCode called with code:', JSON.stringify(code));
+    console.log('🔍 code.startsWith("test_")?', code.startsWith('test_'));
+    if (code === 'test_admin') {
+      return { id: 789012, email: 'admin@example.com', name: 'Admin User' };
+    }
+    if (code.startsWith('test_')) {
+      // Обработка конкретных кодов
+      if (code === 'test_code') {
+        return { id: 123456, email: 'testuser@example.com', name: 'Test User' };
+      }
+      if (code === 'admin_test') { 
+        return { id: 789012, email: 'admin@example.com', name: 'Admin User' };
+      }
+      // Любой другой test_* код
       return {
-        id: 123456,
-        email: "testuser@example.com",
-        name: "Test User",
+        id: 999999,
+        email: `user_${code}@example.com`,
+        name: `User ${code}`,
       };
     }
   
+    // Реальный OAuth (если код не тестовый)
     const accessToken = await exchangeCodeForAccessToken(code);
     return getGitHubUser(accessToken);
   }
