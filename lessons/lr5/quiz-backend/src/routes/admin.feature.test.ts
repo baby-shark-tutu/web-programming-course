@@ -84,4 +84,12 @@ describe('Admin role-based restrictions', () => {
         const data = await res.json();
         expect(data.error).toBeDefined();
     });
+
+    it('should return 401 for invalid token on admin endpoint', async () => {
+      const request = new Request('http://localhost/api/admin/questions', {
+        headers: { Authorization: 'Bearer invalid' },
+      });
+      const res = await app.request(request);
+      expect(res.status).toBe(401);
+    });
 });

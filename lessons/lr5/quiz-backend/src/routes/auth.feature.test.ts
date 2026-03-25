@@ -72,4 +72,12 @@ describe('Auth feature tests', () => {
     const data = await res.json();
     expect(data.error).toBe('Unauthorized');
   });
+
+  it('should return 401 when no token provided for /me', async () => {
+    const request = new Request('http://localhost/api/auth/me');
+    const res = await app.request(request);
+    expect(res.status).toBe(401);
+    const data = await res.json();
+    expect(data.error).toBe('Unauthorized');
+  });
 });
